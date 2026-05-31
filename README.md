@@ -2,7 +2,7 @@
 
 An interactive web application that transforms standard educational YouTube videos into comprehensive study suites. By combining managed transcript extraction proxy layers with the **Gemini 2.5 Flash** model, the platform automatically generates crisp syncopated study notes, active-recall flashcards, and interactive conceptual multiple-choice quizzes.
 
-![Live App](https://youtube-videos-summarizer-gdpsqprwjbajf4msh7cwfo.streamlit.app/)
+[Live App](https://youtube-videos-summarizer-gdpsqprwjbajf4msh7cwfo.streamlit.app/)
 ---
 
 ## 🚀 Key Features
