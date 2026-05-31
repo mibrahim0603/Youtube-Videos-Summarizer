@@ -1,3 +1,4 @@
+from fpdf import FPDF
 import streamlit as st
 import google.generativeai as genai
 import speech_recognition as sr
@@ -634,6 +635,7 @@ if "current_question" not in st.session_state:
 # VIDEO ID
 # =====================================
 
+
 def extract_video_id(url):
 
     parsed_url = urlparse(url)
@@ -654,6 +656,7 @@ def extract_video_id(url):
 # =====================================
 # GET TRANSCRIPT
 # =====================================
+
 
 def get_transcript(video_url):
 
@@ -679,6 +682,7 @@ def get_transcript(video_url):
 # NOTES
 # =====================================
 
+
 def generate_notes(transcript):
 
     prompt = f"""
@@ -701,6 +705,7 @@ def generate_notes(transcript):
 # =====================================
 # FLASHCARDS
 # =====================================
+
 
 def generate_flashcards(transcript):
 
@@ -726,6 +731,7 @@ def generate_flashcards(transcript):
 # QUIZ
 # =====================================
 
+
 def generate_quiz(transcript):
 
     prompt = f"""
@@ -743,6 +749,7 @@ def generate_quiz(transcript):
 # =====================================
 # PDF EXPORT
 # =====================================
+
 
 def create_pdf(title, content):
 
@@ -803,6 +810,7 @@ def create_pdf(title, content):
 # VOICE
 # =====================================
 
+
 def listen_to_voice():
 
     recognizer = sr.Recognizer()
@@ -834,6 +842,7 @@ def listen_to_voice():
 # =====================================
 # GENERATE BUTTON
 # =====================================
+
 
 if st.button(
     "✨ Generate AI Study Material"
@@ -900,7 +909,6 @@ if st.session_state.notes:
         st.write(
             st.session_state.notes
         )
-
 
        # =====================================
     # FLASHCARDS TAB
@@ -1060,7 +1068,7 @@ if st.session_state.notes:
                 with cols[index % 2]:
 
                     st.components.v1.html(
-    f"""
+                        f"""
     <div class="flip-card" onclick="this.classList.toggle('flipped')">
 
         <div class="flip-card-inner">
@@ -1196,9 +1204,8 @@ if st.session_state.notes:
 
     </style>
     """,
-    height=280
-)
-                    
+                        height=280
+                    )
 
                 index += 1
         # =====================================
