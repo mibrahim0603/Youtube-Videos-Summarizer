@@ -643,15 +643,20 @@ function fcFlip(id) {
                 question = question.replace("**", "").strip()
                 answer = answer.replace("**", "").strip()
 
+                q_len = len(question)
+                a_len = len(answer)
+                q_fs = "11px" if q_len > 300 else "12px" if q_len > 200 else "13px" if q_len > 120 else "14px"
+                a_fs = "11px" if a_len > 300 else "12px" if a_len > 200 else "13px" if a_len > 120 else "14px"
+
                 with cols[index % 2]:
                     st.markdown(f"""
 <div class="fc-wrap">
-  <div class="fc-front" id="fc_f_{index}" onclick="fcFlip({index})">
-    <div class="fc-label">❓ Question &nbsp;·&nbsp; click to reveal answer</div>
+  <div class="fc-front" id="fc_f_{index}" onclick="fcFlip({index})" style="font-size:{q_fs};">
+    <div class="fc-label">Question · click to reveal answer</div>
     {question}
   </div>
-  <div class="fc-back" id="fc_b_{index}" onclick="fcFlip({index})">
-    <div class="fc-label">✨ Answer &nbsp;·&nbsp; click to go back</div>
+  <div class="fc-back" id="fc_b_{index}" onclick="fcFlip({index})" style="font-size:{a_fs};">
+    <div class="fc-label">Answer · click to go back</div>
     {answer}
   </div>
 </div>
