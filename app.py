@@ -570,50 +570,7 @@ if st.session_state.notes:
     # ─── FLASHCARDS TAB ──────────────────────────────────────
     with tab2:
 
-        st.markdown(
-            """
-            <style>
-            .flip-card {
-                background: transparent;
-                width: 100%; height: 260px;
-                perspective: 1000px;
-                margin-bottom: 30px;
-                cursor: pointer;
-            }
-            .flip-card-inner {
-                position: relative;
-                width: 100%; height: 100%;
-                text-align: center;
-                transition: transform 0.8s;
-                transform-style: preserve-3d;
-            }
-            .flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
-            .flip-card-front, .flip-card-back {
-                position: absolute;
-                width: 100%; height: 100%;
-                backface-visibility: hidden;
-                border-radius: 24px;
-                display: flex; align-items: center; justify-content: center;
-                padding: 25px; box-sizing: border-box;
-            }
-            .flip-card-front {
-                background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.95));
-                border: 1px solid rgba(56,189,248,0.14);
-                box-shadow: 0px 0px 30px rgba(56,189,248,0.08);
-            }
-            .flip-card-back {
-                background: linear-gradient(145deg, rgba(6,95,70,0.95), rgba(4,120,87,0.95));
-                transform: rotateY(180deg);
-                border: 1px solid rgba(16,185,129,0.2);
-            }
-            .flash-question { font-size: 28px; font-weight: 800; color: white; text-align: center; line-height: 1.5; }
-            .flash-answer   { font-size: 20px; color: white; text-align: center; line-height: 1.7; }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
-        st.caption("💡 Hover over a card to reveal the answer")
+        st.caption("💡 Click a card to flip and reveal the answer")
 
         cards = st.session_state.flashcards.split("Q:")
         cols = st.columns(2)
@@ -624,102 +581,97 @@ if st.session_state.notes:
                 question, answer = card.split("A:", 1)
                 question = question.replace("**", "").strip()
                 answer = answer.replace("**", "").strip()
+                card_id = f"card_{index}"
 
                 with cols[index % 2]:
-                    # Shrink font for long text
-                    q_len = len(question)
-                    a_len = len(answer)
-                    q_size = "18px" if q_len > 200 else "21px" if q_len > 120 else "24px"
-                    a_size = "16px" if a_len > 200 else "18px" if a_len > 120 else "20px"
-                    # Card height grows with content
-                    card_height = max(
-                        260, min(420, 260 + max(0, q_len - 100) // 3))
-
                     st.components.v1.html(
                         f"""
-<div class="flip-card" onclick="this.querySelector('.flip-card-inner').style.transform = this.querySelector('.flip-card-inner').style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)'">
-  <div class="flip-card-inner">
-    <div class="flip-card-front">
-      <div class="flash-question" style="font-size:{q_size}">❓ {question}</div>
-    </div>
-    <div class="flip-card-back">
-      <div class="flash-answer" style="font-size:{a_size}">✨ {answer}</div>
-    </div>
-  </div>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
 <style>
-* {{ box-sizing: border-box; margin:0; padding:0; }}
-body {{ background: transparent; }}
-.flip-card {{
-  background: transparent;
-  width: 100%;
-  min-height: {card_height}px;
-  perspective: 1000px;
-  cursor: pointer;
-  margin-bottom: 4px;
-}}
-.flip-card-inner {{
-  position: relative;
-  width: 100%;
-  min-height: {card_height}px;
-  transition: transform 0.8s;
-  transform-style: preserve-3d;
-}}
-.flip-card-front, .flip-card-back {{
-  position: absolute;
-  width: 100%;
-  min-height: {card_height}px;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 20px;
-  overflow: hidden;
-}}
-.flip-card-front {{
-  background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.95));
-  border: 1px solid rgba(56,189,248,0.14);
-  box-shadow: 0 0 30px rgba(56,189,248,0.08);
-}}
-.flip-card-back {{
-  background: linear-gradient(145deg, rgba(6,95,70,0.95), rgba(4,120,87,0.95));
-  transform: rotateY(180deg);
-  border: 1px solid rgba(16,185,129,0.2);
-}}
-.flash-question {{
-  font-weight: 800;
-  color: white;
-  text-align: center;
-  line-height: 1.55;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-  max-width: 100%;
-  overflow-y: auto;
-  max-height: {card_height - 48}px;
-}}
-.flash-answer {{
-  color: white;
-  text-align: center;
-  line-height: 1.7;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-  max-width: 100%;
-  overflow-y: auto;
-  max-height: {card_height - 48}px;
-}}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: transparent; font-family: sans-serif; padding: 6px; }}
+
+  .card {{
+    width: 100%;
+    border-radius: 20px;
+    padding: 22px 20px;
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }}
+
+  .card-front {{
+    display: block;
+    background: linear-gradient(145deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97));
+    border: 1px solid rgba(56,189,248,0.22);
+    box-shadow: 0 0 28px rgba(56,189,248,0.10);
+    color: white;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+  }}
+
+  .card-back {{
+    display: none;
+    background: linear-gradient(145deg, rgba(6,95,70,0.97), rgba(4,120,87,0.97));
+    border: 1px solid rgba(16,185,129,0.3);
+    box-shadow: 0 0 28px rgba(16,185,129,0.12);
+    color: white;
+    font-size: 16px;
+    line-height: 1.7;
+    text-align: center;
+  }}
+
+  .card:hover {{ box-shadow: 0 0 44px rgba(56,189,248,0.22); }}
+
+  .label {{
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.55;
+    margin-bottom: 10px;
+  }}
 </style>
+</head>
+<body>
+  <div class="card card-front" id="{card_id}" onclick="flipCard('{card_id}')">
+    <div class="label">Question — click to flip</div>
+    ❓ {question}
+  </div>
+  <div class="card card-back" id="{card_id}_back" onclick="flipCard('{card_id}')">
+    <div class="label">Answer — click to flip back</div>
+    ✨ {answer}
+  </div>
+
+  <script>
+    function flipCard(id) {{
+      var front = document.getElementById(id);
+      var back  = document.getElementById(id + "_back");
+      if (front.style.display === "none") {{
+        front.style.display = "block";
+        back.style.display  = "none";
+      }} else {{
+        front.style.display = "none";
+        back.style.display  = "block";
+      }}
+    }}
+  </script>
+</body>
+</html>
 """,
-                        height=card_height + 20
+                        height=None,
+                        scrolling=False
                     )
                 index += 1
 
         st.markdown("---")
 
-        # FIX: PDF export for flashcards
+        # PDF export for flashcards
         if st.button("📄 Download Flashcards as PDF"):
             with st.spinner("Generating PDF..."):
                 try:
