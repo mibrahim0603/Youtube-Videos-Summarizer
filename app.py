@@ -645,7 +645,7 @@ function fcFlip(id) {
 
                 q_len = len(question)
                 a_len = len(answer)
-                q_fs = "11px" if q_len > 300 else "12px" if q_len > 200 else "13px" if q_len > 120 else "14px"
+                q_fs = "8px" if q_len > 300 else "9px" if q_len > 200 else "10px" if q_len > 120 else "11px"
                 a_fs = "11px" if a_len > 300 else "12px" if a_len > 200 else "13px" if a_len > 120 else "14px"
 
                 with cols[index % 2]:
