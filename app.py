@@ -572,6 +572,67 @@ if st.session_state.notes:
 
         st.caption("💡 Click a card to flip and reveal the answer")
 
+        # Inject CSS + JS once at the top of the tab
+        st.markdown("""
+<style>
+.fc-wrap {
+    margin-bottom: 20px;
+}
+.fc-front, .fc-back {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 20px;
+    padding: 22px 20px;
+    cursor: pointer;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    font-size: 16px;
+    line-height: 1.65;
+    transition: box-shadow 0.25s ease;
+}
+.fc-front {
+    background: linear-gradient(145deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97));
+    border: 1px solid rgba(56,189,248,0.22);
+    box-shadow: 0 0 28px rgba(56,189,248,0.10);
+    color: white !important;
+    font-weight: 700;
+    text-align: center;
+}
+.fc-back {
+    display: none;
+    background: linear-gradient(145deg, rgba(6,95,70,0.97), rgba(4,120,87,0.97));
+    border: 1px solid rgba(16,185,129,0.3);
+    box-shadow: 0 0 28px rgba(16,185,129,0.12);
+    color: white !important;
+    text-align: center;
+}
+.fc-front:hover { box-shadow: 0 0 44px rgba(56,189,248,0.30); }
+.fc-back:hover  { box-shadow: 0 0 44px rgba(16,185,129,0.30); }
+.fc-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 10px;
+    color: white !important;
+}
+</style>
+<script>
+function fcFlip(id) {
+    var f = document.getElementById("fc_f_" + id);
+    var b = document.getElementById("fc_b_" + id);
+    if (f.style.display === "none") {
+        f.style.display = "block";
+        b.style.display = "none";
+    } else {
+        f.style.display = "none";
+        b.style.display = "block";
+    }
+}
+</script>
+""", unsafe_allow_html=True)
+
         cards = st.session_state.flashcards.split("Q:")
         cols = st.columns(2)
         index = 0
@@ -581,92 +642,21 @@ if st.session_state.notes:
                 question, answer = card.split("A:", 1)
                 question = question.replace("**", "").strip()
                 answer = answer.replace("**", "").strip()
-                card_id = f"card_{index}"
 
                 with cols[index % 2]:
-                    st.components.v1.html(
-                        f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ background: transparent; font-family: sans-serif; padding: 6px; }}
-
-  .card {{
-    width: 100%;
-    border-radius: 20px;
-    padding: 22px 20px;
-    cursor: pointer;
-    transition: box-shadow 0.3s ease;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-  }}
-
-  .card-front {{
-    display: block;
-    background: linear-gradient(145deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97));
-    border: 1px solid rgba(56,189,248,0.22);
-    box-shadow: 0 0 28px rgba(56,189,248,0.10);
-    color: white;
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.6;
-    text-align: center;
-  }}
-
-  .card-back {{
-    display: none;
-    background: linear-gradient(145deg, rgba(6,95,70,0.97), rgba(4,120,87,0.97));
-    border: 1px solid rgba(16,185,129,0.3);
-    box-shadow: 0 0 28px rgba(16,185,129,0.12);
-    color: white;
-    font-size: 16px;
-    line-height: 1.7;
-    text-align: center;
-  }}
-
-  .card:hover {{ box-shadow: 0 0 44px rgba(56,189,248,0.22); }}
-
-  .label {{
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    opacity: 0.55;
-    margin-bottom: 10px;
-  }}
-</style>
-</head>
-<body>
-  <div class="card card-front" id="{card_id}" onclick="flipCard('{card_id}')">
-    <div class="label">Question — click to flip</div>
-    ❓ {question}
+                    st.markdown(f"""
+<div class="fc-wrap">
+  <div class="fc-front" id="fc_f_{index}" onclick="fcFlip({index})">
+    <div class="fc-label">❓ Question &nbsp;·&nbsp; click to reveal answer</div>
+    {question}
   </div>
-  <div class="card card-back" id="{card_id}_back" onclick="flipCard('{card_id}')">
-    <div class="label">Answer — click to flip back</div>
-    ✨ {answer}
+  <div class="fc-back" id="fc_b_{index}" onclick="fcFlip({index})">
+    <div class="fc-label">✨ Answer &nbsp;·&nbsp; click to go back</div>
+    {answer}
   </div>
+</div>
+""", unsafe_allow_html=True)
 
-  <script>
-    function flipCard(id) {{
-      var front = document.getElementById(id);
-      var back  = document.getElementById(id + "_back");
-      if (front.style.display === "none") {{
-        front.style.display = "block";
-        back.style.display  = "none";
-      }} else {{
-        front.style.display = "none";
-        back.style.display  = "block";
-      }}
-    }}
-  </script>
-</body>
-</html>
-""",
-                        height=None,
-                        scrolling=False
-                    )
                 index += 1
 
         st.markdown("---")
