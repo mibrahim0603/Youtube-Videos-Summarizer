@@ -516,7 +516,38 @@ if st.session_state.notes:
     # ─── NOTES TAB ───────────────────────────────────────────
     with tab1:
 
-        st.write(st.session_state.notes)
+        st.markdown(
+            """
+            <style>
+            /* Fix code blocks hidden by white background */
+            .stMarkdown code {
+                background: rgba(15, 23, 42, 0.9) !important;
+                color: #7dd3fc !important;
+                border: 1px solid rgba(56,189,248,0.25) !important;
+                border-radius: 8px !important;
+                padding: 2px 8px !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: 15px !important;
+            }
+            .stMarkdown pre {
+                background: rgba(15, 23, 42, 0.9) !important;
+                border: 1px solid rgba(56,189,248,0.25) !important;
+                border-radius: 12px !important;
+                padding: 16px !important;
+                overflow-x: auto !important;
+            }
+            .stMarkdown pre code {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                color: #7dd3fc !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        st.markdown(st.session_state.notes)
 
         st.markdown("---")
 
