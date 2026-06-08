@@ -626,29 +626,94 @@ if st.session_state.notes:
                 answer = answer.replace("**", "").strip()
 
                 with cols[index % 2]:
+                    # Shrink font for long text
+                    q_len = len(question)
+                    a_len = len(answer)
+                    q_size = "18px" if q_len > 200 else "21px" if q_len > 120 else "24px"
+                    a_size = "16px" if a_len > 200 else "18px" if a_len > 120 else "20px"
+                    # Card height grows with content
+                    card_height = max(
+                        260, min(420, 260 + max(0, q_len - 100) // 3))
+
                     st.components.v1.html(
                         f"""
 <div class="flip-card" onclick="this.querySelector('.flip-card-inner').style.transform = this.querySelector('.flip-card-inner').style.transform === 'rotateY(180deg)' ? '' : 'rotateY(180deg)'">
   <div class="flip-card-inner">
     <div class="flip-card-front">
-      <div class="flash-question">❓ {question}</div>
+      <div class="flash-question" style="font-size:{q_size}">❓ {question}</div>
     </div>
     <div class="flip-card-back">
-      <div class="flash-answer">✨ {answer}</div>
+      <div class="flash-answer" style="font-size:{a_size}">✨ {answer}</div>
     </div>
   </div>
 </div>
 <style>
-.flip-card {{ background:transparent; width:100%; height:260px; perspective:1000px; cursor:pointer; }}
-.flip-card-inner {{ position:relative; width:100%; height:100%; transition:transform 0.8s; transform-style:preserve-3d; }}
-.flip-card-front,.flip-card-back {{ position:absolute; width:100%; height:100%; backface-visibility:hidden; border-radius:24px; display:flex; align-items:center; justify-content:center; padding:25px; box-sizing:border-box; }}
-.flip-card-front {{ background:linear-gradient(145deg,rgba(30,41,59,0.95),rgba(15,23,42,0.95)); border:1px solid rgba(56,189,248,0.14); box-shadow:0 0 30px rgba(56,189,248,0.08); }}
-.flip-card-back  {{ background:linear-gradient(145deg,rgba(6,95,70,0.95),rgba(4,120,87,0.95)); transform:rotateY(180deg); border:1px solid rgba(16,185,129,0.2); }}
-.flash-question  {{ font-size:28px; font-weight:800; color:white; text-align:center; line-height:1.5; }}
-.flash-answer    {{ font-size:20px; color:white; text-align:center; line-height:1.7; }}
+* {{ box-sizing: border-box; margin:0; padding:0; }}
+body {{ background: transparent; }}
+.flip-card {{
+  background: transparent;
+  width: 100%;
+  min-height: {card_height}px;
+  perspective: 1000px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}}
+.flip-card-inner {{
+  position: relative;
+  width: 100%;
+  min-height: {card_height}px;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}}
+.flip-card-front, .flip-card-back {{
+  position: absolute;
+  width: 100%;
+  min-height: {card_height}px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  overflow: hidden;
+}}
+.flip-card-front {{
+  background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.95));
+  border: 1px solid rgba(56,189,248,0.14);
+  box-shadow: 0 0 30px rgba(56,189,248,0.08);
+}}
+.flip-card-back {{
+  background: linear-gradient(145deg, rgba(6,95,70,0.95), rgba(4,120,87,0.95));
+  transform: rotateY(180deg);
+  border: 1px solid rgba(16,185,129,0.2);
+}}
+.flash-question {{
+  font-weight: 800;
+  color: white;
+  text-align: center;
+  line-height: 1.55;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 100%;
+  overflow-y: auto;
+  max-height: {card_height - 48}px;
+}}
+.flash-answer {{
+  color: white;
+  text-align: center;
+  line-height: 1.7;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 100%;
+  overflow-y: auto;
+  max-height: {card_height - 48}px;
+}}
 </style>
 """,
-                        height=280
+                        height=card_height + 20
                     )
                 index += 1
 
