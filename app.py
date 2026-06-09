@@ -572,11 +572,15 @@ if st.session_state.notes:
 
         st.caption("💡 Click a card to flip and reveal the answer")
 
-        # Inject CSS + JS once at the top of the tab
+        # Inject CSS once — pure CSS checkbox flip, no JS needed
         st.markdown("""
 <style>
 .fc-wrap {
     margin-bottom: 20px;
+}
+/* Hide the checkbox */
+.fc-toggle {
+    display: none;
 }
 .fc-front, .fc-back {
     width: 100%;
@@ -587,11 +591,11 @@ if st.session_state.notes:
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: normal;
-    font-size: 16px;
     line-height: 1.65;
     transition: box-shadow 0.25s ease;
 }
 .fc-front {
+    display: block;
     background: linear-gradient(145deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97));
     border: 1px solid rgba(56,189,248,0.22);
     box-shadow: 0 0 28px rgba(56,189,248,0.10);
@@ -607,6 +611,13 @@ if st.session_state.notes:
     color: white !important;
     text-align: center;
 }
+/* When checkbox is checked, swap front/back */
+.fc-toggle:checked ~ .fc-front {
+    display: none;
+}
+.fc-toggle:checked ~ .fc-back {
+    display: block;
+}
 .fc-front:hover { box-shadow: 0 0 44px rgba(56,189,248,0.30); }
 .fc-back:hover  { box-shadow: 0 0 44px rgba(16,185,129,0.30); }
 .fc-label {
@@ -618,19 +629,6 @@ if st.session_state.notes:
     color: white !important;
 }
 </style>
-<script>
-function fcFlip(id) {
-    var f = document.getElementById("fc_f_" + id);
-    var b = document.getElementById("fc_b_" + id);
-    if (f.style.display === "none") {
-        f.style.display = "block";
-        b.style.display = "none";
-    } else {
-        f.style.display = "none";
-        b.style.display = "block";
-    }
-}
-</script>
 """, unsafe_allow_html=True)
 
         cards = st.session_state.flashcards.split("Q:")
@@ -649,16 +647,18 @@ function fcFlip(id) {
                 a_fs = "11px" if a_len > 300 else "12px" if a_len > 200 else "13px" if a_len > 120 else "14px"
 
                 with cols[index % 2]:
+                    # label[for] targets the hidden checkbox — clicking label toggles it
                     st.markdown(f"""
 <div class="fc-wrap">
-  <div class="fc-front" id="fc_f_{index}" onclick="fcFlip({index})" style="font-size:{q_fs};">
+  <input type="checkbox" class="fc-toggle" id="fc_{index}">
+  <label for="fc_{index}" class="fc-front" style="font-size:{q_fs}; display:block;">
     <div class="fc-label">Question · click to reveal answer</div>
     {question}
-  </div>
-  <div class="fc-back" id="fc_b_{index}" onclick="fcFlip({index})" style="font-size:{a_fs};">
+  </label>
+  <label for="fc_{index}" class="fc-back" style="font-size:{a_fs};">
     <div class="fc-label">Answer · click to go back</div>
     {answer}
-  </div>
+  </label>
 </div>
 """, unsafe_allow_html=True)
 
