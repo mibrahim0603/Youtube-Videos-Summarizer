@@ -1,8 +1,6 @@
 from fpdf import FPDF
 import streamlit as st
 import google.generativeai as genai
-# used for AudioFile transcription only (no PyAudio/microphone)
-import speech_recognition as sr
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from urllib.parse import urlparse, parse_qs
@@ -314,7 +312,7 @@ video_url = st.text_input(
 # SESSION STATE
 # =====================================
 
-for key in ["notes", "flashcards", "quiz", "transcript", "current_question", "formatted_quiz", "chat_history"]:
+for key in ["notes", "flashcards", "quiz", "transcript", "formatted_quiz", "chat_history"]:
     if key not in st.session_state:
         st.session_state[key] = "" if key != "chat_history" else []
 
@@ -455,32 +453,10 @@ def create_pdf(title, content):
     pdf.output(file_name)
     return file_name
 
-# =====================================
-# VOICE INPUT
-# =====================================
-
-
-def listen_to_voice(audio_bytes):
-    """Convert uploaded audio bytes to text using SpeechRecognition."""
-    recognizer = sr.Recognizer()
-    try:
-        import io
-        audio_file = io.BytesIO(audio_bytes)
-        with sr.AudioFile(audio_file) as source:
-            audio_data = recognizer.record(source)
-        return recognizer.recognize_google(audio_data)
-    except sr.UnknownValueError:
-        return "Could not understand audio. Please speak clearly and try again."
-    except sr.RequestError as e:
-        return f"Speech recognition error: {e}"
-    except Exception as e:
-        return f"Audio processing error: {e}"
 
 # =====================================
 # GENERATE BUTTON
 # =====================================
-
-
 if st.button("✨ Generate AI Study Material"):
     if video_url:
         with st.spinner("🧠 Processing Lecture..."):
@@ -754,29 +730,13 @@ if st.session_state.notes:
                     unsafe_allow_html=True
                 )
 
-        # Voice input using Streamlit's built-in audio recorder (no PyAudio needed)
-        col_voice, col_clear = st.columns([1, 1])
-        with col_voice:
-            audio_input = st.audio_input("🎤 Record your question")
-            if audio_input is not None:
-                with st.spinner("Transcribing..."):
-                    audio_bytes = audio_input.read()
-                    voice_text = listen_to_voice(audio_bytes)
-                    st.session_state.current_question = voice_text
-                    st.success(f"Heard: {voice_text}")
+        if st.button("🗑️ Clear Chat"):
+            st.session_state.chat_history = []
+            st.session_state.current_question = ""
+            st.rerun()
 
-        with col_clear:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🗑️ Clear Chat"):
-                st.session_state.chat_history = []
-                st.session_state.current_question = ""
-                st.rerun()
-
-        # Text input — pre-fill with voice result if available
-        default_q = st.session_state.current_question
         user_question = st.text_input(
             "Ask your doubt here:",
-            value=default_q,
             key="question_box"
         )
 
@@ -807,7 +767,6 @@ Student Question:
                         {"role": "user",      "content": final_question})
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer})
-                    st.session_state.current_question = ""
 
                     st.rerun()
 

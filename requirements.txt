@@ -1,5 +1,4 @@
 streamlit
 google-generativeai
 youtube-transcript-api
-SpeechRecognition
 fpdf
