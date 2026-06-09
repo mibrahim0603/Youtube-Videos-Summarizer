@@ -1,6 +1,7 @@
 from fpdf import FPDF
 import streamlit as st
 import google.generativeai as genai
+# used for AudioFile transcription only (no PyAudio/microphone)
 import speech_recognition as sr
 
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -459,17 +460,21 @@ def create_pdf(title, content):
 # =====================================
 
 
-def listen_to_voice():
+def listen_to_voice(audio_bytes):
+    """Convert uploaded audio bytes to text using SpeechRecognition."""
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎤 Listening... Speak now!")
-        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
     try:
-        return recognizer.recognize_google(audio)
+        import io
+        audio_file = io.BytesIO(audio_bytes)
+        with sr.AudioFile(audio_file) as source:
+            audio_data = recognizer.record(source)
+        return recognizer.recognize_google(audio_data)
     except sr.UnknownValueError:
-        return "Could not understand audio. Please try again."
+        return "Could not understand audio. Please speak clearly and try again."
     except sr.RequestError as e:
         return f"Speech recognition error: {e}"
+    except Exception as e:
+        return f"Audio processing error: {e}"
 
 # =====================================
 # GENERATE BUTTON
@@ -749,15 +754,19 @@ if st.session_state.notes:
                     unsafe_allow_html=True
                 )
 
-        # Voice input
+        # Voice input using Streamlit's built-in audio recorder (no PyAudio needed)
         col_voice, col_clear = st.columns([1, 1])
         with col_voice:
-            if st.button("🎤 Speak Question"):
-                voice_text = listen_to_voice()
-                st.session_state.current_question = voice_text
-                st.success(f"Heard: {voice_text}")
+            audio_input = st.audio_input("🎤 Record your question")
+            if audio_input is not None:
+                with st.spinner("Transcribing..."):
+                    audio_bytes = audio_input.read()
+                    voice_text = listen_to_voice(audio_bytes)
+                    st.session_state.current_question = voice_text
+                    st.success(f"Heard: {voice_text}")
 
         with col_clear:
+            st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🗑️ Clear Chat"):
                 st.session_state.chat_history = []
                 st.session_state.current_question = ""
