@@ -7,6 +7,8 @@ from youtube_transcript_api import (
     TranscriptsDisabled,
     NoTranscriptFound,
     VideoUnavailable,
+    RequestBlocked,
+    AgeRestricted,
     YouTubeTranscriptApiException,
 )
 from urllib.parse import urlparse, parse_qs
@@ -533,6 +535,21 @@ if generate_clicked:
 
                 st.success("🚀 Study Material Generated!")
 
+            except RequestBlocked:
+                st.error(
+                    "🚫 YouTube is blocking transcript requests from this server's IP "
+                    "address — this happens even when the video clearly has captions. "
+                    "It's common when an app is hosted on a cloud platform (Streamlit "
+                    "Community Cloud, AWS, GCP, Azure, etc.), since YouTube blocks most "
+                    "datacenter IP ranges. Try again later, run CORTEXA locally, or route "
+                    "requests through a residential proxy as described in the "
+                    "youtube-transcript-api README."
+                )
+            except AgeRestricted:
+                st.error(
+                    "🚫 This video is age-restricted, so CORTEXA can't access its "
+                    "transcript without authentication. Please try a different video."
+                )
             except TranscriptsDisabled:
                 st.error(
                     "🚫 This video doesn't have captions enabled, so CORTEXA can't "
