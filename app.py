@@ -2,7 +2,13 @@ from fpdf import FPDF
 import streamlit as st
 import google.generativeai as genai
 
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import (
+    YouTubeTranscriptApi,
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable,
+    YouTubeTranscriptApiException,
+)
 from urllib.parse import urlparse, parse_qs
 
 # =====================================
@@ -276,7 +282,7 @@ with st.sidebar:
         ✅ Generate Smart Notes  
         ✅ Create AI Flashcards  
         ✅ Build Interactive Quizzes  
-        ✅ Voice-Based AI Tutor  
+        ✅ Text-Based AI Tutor  
         ✅ Understand Lectures  
         ✅ Answer Doubts Instantly  
         ✅ Improve Learning Speed  
@@ -312,9 +318,19 @@ video_url = st.text_input(
 # SESSION STATE
 # =====================================
 
-for key in ["notes", "flashcards", "quiz", "transcript", "formatted_quiz", "chat_history"]:
+default_session_values = {
+    "notes": "",
+    "flashcards": "",
+    "quiz": "",
+    "transcript": "",
+    "formatted_quiz": "",
+    "chat_history": [],
+    "quiz_results": {},   # {question_index: True/False} -> tracks score across reruns
+}
+
+for key, default in default_session_values.items():
     if key not in st.session_state:
-        st.session_state[key] = "" if key != "chat_history" else []
+        st.session_state[key] = default
 
 # =====================================
 # VIDEO ID EXTRACTOR
@@ -358,7 +374,11 @@ if video_url:
 # GET TRANSCRIPT
 # =====================================
 
+# CACHE: same video_url -> same transcript. Avoids re-hitting the YouTube
+# transcript API every time someone reprocesses a video they already used.
 
+
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
 def get_transcript(video_url):
     video_id = extract_video_id(video_url)
     if not video_id:
@@ -373,7 +393,12 @@ def get_transcript(video_url):
 # CONTENT GENERATORS
 # =====================================
 
+# CACHE: each function is keyed on the transcript text itself, so calling
+# generate_notes() twice with the same transcript returns the cached result
+# instead of paying for another Gemini call.
 
+
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
 def generate_notes(transcript):
     prompt = f"""
     Convert this lecture transcript into structured study notes:
@@ -388,6 +413,7 @@ def generate_notes(transcript):
     return model.generate_content(prompt).text
 
 
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
 def generate_flashcards(transcript):
     prompt = f"""
     Create 10-15 flashcards from this lecture.
@@ -404,6 +430,7 @@ def generate_flashcards(transcript):
     return model.generate_content(prompt).text
 
 
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
 def generate_quiz(transcript):
     prompt = f"""
     Create 5 multiple choice quiz questions from this lecture.
@@ -457,10 +484,34 @@ def create_pdf(title, content):
 # =====================================
 # GENERATE BUTTON
 # =====================================
-if st.button("✨ Generate AI Study Material"):
+
+gen_col1, gen_col2 = st.columns([3, 1])
+
+with gen_col1:
+    generate_clicked = st.button("✨ Generate AI Study Material")
+with gen_col2:
+    force_refresh = st.checkbox(
+        "🔄 Force refresh",
+        help="Ignore cached results and call the AI again, even for a video you've already processed."
+    )
+
+st.caption(
+    "💾 Reprocessing the same video reuses cached results instead of "
+    "calling the YouTube/Gemini APIs again. Check 'Force refresh' to regenerate from scratch."
+)
+
+if generate_clicked:
     if video_url:
         with st.spinner("🧠 Processing Lecture..."):
             try:
+                if force_refresh:
+                    # Bust the cache for these specific functions so the
+                    # next calls below actually hit the APIs again.
+                    get_transcript.clear()
+                    generate_notes.clear()
+                    generate_flashcards.clear()
+                    generate_quiz.clear()
+
                 transcript = get_transcript(video_url)
                 notes = generate_notes(transcript)
                 flashcards = generate_flashcards(transcript)
@@ -473,11 +524,39 @@ if st.button("✨ Generate AI Study Material"):
                 # FIX: clear cached quiz & chat when new video is processed
                 st.session_state.formatted_quiz = quiz
                 st.session_state.chat_history = []
+                st.session_state.quiz_results = {}
+                # Clear old quiz widget state so a new quiz doesn't inherit
+                # previously selected answers from a different video.
+                for k in list(st.session_state.keys()):
+                    if k.startswith("quiz_") or k.startswith("submit_"):
+                        del st.session_state[k]
 
                 st.success("🚀 Study Material Generated!")
 
+            except TranscriptsDisabled:
+                st.error(
+                    "🚫 This video doesn't have captions enabled, so CORTEXA can't "
+                    "read it. Try a different video that has captions or subtitles turned on."
+                )
+            except NoTranscriptFound:
+                st.error(
+                    "🚫 No transcript could be found for this video in a supported "
+                    "language. Try a video that has English (or auto-generated) captions available."
+                )
+            except VideoUnavailable:
+                st.error(
+                    "🚫 This video isn't available right now — it may be private, "
+                    "deleted, or restricted in your region. Please try a different link."
+                )
+            except YouTubeTranscriptApiException:
+                st.error(
+                    "🚫 CORTEXA couldn't retrieve a transcript for this video. Double-check "
+                    "the link, and make sure the video has captions or subtitles available."
+                )
+            except ValueError as e:
+                st.error(f"🚫 {e}")
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                st.error(f"❌ Unexpected error: {e}")
     else:
         st.warning("Please enter a YouTube URL")
 
@@ -667,7 +746,7 @@ if st.session_state.notes:
     with tab3:
 
         quiz_blocks = st.session_state.formatted_quiz.split("Question:")
-        question_number = 0
+        parsed_questions = []
 
         for block in quiz_blocks:
             if "Correct:" not in block:
@@ -687,35 +766,92 @@ if st.session_state.notes:
             if not options or not correct:
                 continue
 
+            parsed_questions.append(
+                {"question": question, "options": options, "correct": correct})
+
+        total_questions = len(parsed_questions)
+        answered_count = len(st.session_state.quiz_results)
+        correct_count = sum(
+            1 for is_correct in st.session_state.quiz_results.values() if is_correct)
+
+        # ── Live score tracker ──
+        score_col, reset_col = st.columns([3, 1])
+        with score_col:
             st.markdown(
-                f'<div class="flashcard"><h2>❓ Question {question_number + 1}: {question}</h2></div>',
+                f"### 🏆 Score: {correct_count} / {total_questions}"
+                f"&nbsp;&nbsp;·&nbsp;&nbsp;Answered: {answered_count} / {total_questions}"
+            )
+        with reset_col:
+            if st.button("🔄 Reset Quiz"):
+                st.session_state.quiz_results = {}
+                for i in range(total_questions):
+                    st.session_state.pop(f"quiz_{i}", None)
+                st.rerun()
+
+        st.markdown("---")
+
+        for question_number, q in enumerate(parsed_questions):
+
+            st.markdown(
+                f'<div class="flashcard"><h2>❓ Question {question_number + 1}: {q["question"]}</h2></div>',
                 unsafe_allow_html=True
             )
 
+            result = st.session_state.quiz_results.get(question_number)
+
             selected = st.radio(
                 "Choose your answer:",
-                options,
+                q["options"],
                 key=f"quiz_{question_number}",
-                index=None
+                index=None,
+                disabled=result is not None
             )
 
-            if st.button("Submit Answer", key=f"submit_{question_number}"):
-                if selected is None:
-                    st.warning("Please select an answer first.")
-                elif selected.startswith(correct):
+            if result is None:
+                if st.button("Submit Answer", key=f"submit_{question_number}"):
+                    if selected is None:
+                        st.warning("Please select an answer first.")
+                    else:
+                        is_correct = selected.startswith(q["correct"])
+                        st.session_state.quiz_results[question_number] = is_correct
+                        st.rerun()
+
+            if result is not None:
+                if result:
                     st.success("✅ Correct Answer!")
-                    st.balloons()
                 else:
-                    st.error(f"❌ Wrong! The correct answer was: **{correct}**")
+                    st.error(
+                        f"❌ Wrong! The correct answer was: **{q['correct']}**")
 
             st.markdown("---")
-            question_number += 1
+
+        # ── Completion summary ──
+        if total_questions and answered_count == total_questions:
+            pct = round(correct_count / total_questions * 100)
+            st.markdown(
+                f"## 🎉 Quiz complete! Final score: {correct_count}/{total_questions} ({pct}%)")
+
+        # PDF export for the quiz
+        if st.button("📄 Download Quiz as PDF"):
+            with st.spinner("Generating PDF..."):
+                try:
+                    pdf_path = create_pdf(
+                        "CORTEXA Quiz", st.session_state.formatted_quiz)
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label="⬇️ Click to Download",
+                            data=f,
+                            file_name="CORTEXA_Quiz.pdf",
+                            mime="application/pdf"
+                        )
+                except Exception as e:
+                    st.error(f"PDF error: {e}")
 
     # ─── AI TUTOR TAB ────────────────────────────────────────
     with tab4:
 
         st.markdown("### 🤖 Chat with CORTEXA Tutor")
-        st.caption("Ask anything about the lecture — by typing or speaking.")
+        st.caption("Ask anything about the lecture in the box below.")
 
         # FIX: render full chat history (not just last answer)
         for msg in st.session_state.chat_history:
