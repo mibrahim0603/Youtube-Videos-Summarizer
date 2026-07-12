@@ -395,61 +395,51 @@ def get_transcript(video_url):
 # CONTENT GENERATORS
 # =====================================
 
-# CACHE: each function is keyed on the transcript text itself, so calling
-# generate_notes() twice with the same transcript returns the cached result
-# instead of paying for another Gemini call.
+# CACHE: single API call returns all three outputs at once, reducing
+# Gemini usage from 3 calls to 1 call per video.
 
 
 @st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
-def generate_notes(transcript):
-    prompt = f"""
-    Convert this lecture transcript into structured study notes:
-    - Smart Notes with clear headings
-    - Key Concepts explained simply
-    - Important Bullet Points
-    - Easy Explanations for beginners
+def generate_all_content(transcript):
+    prompt = (
+        "You are an AI study assistant. Using the lecture transcript below, generate "
+        "three sections of study material. Follow each section format exactly.\n\n"
+        "=== SECTION 1: SMART NOTES ===\n"
+        "Convert the transcript into structured study notes with:\n"
+        "- Clear headings\n"
+        "- Key Concepts explained simply\n"
+        "- Important Bullet Points\n"
+        "- Easy Explanations for beginners\n\n"
+        "=== SECTION 2: FLASHCARDS ===\n"
+        "Create 10-15 flashcards. Use this exact format for every card:\n"
+        "Q: Question here\n"
+        "A: Answer here\n\n"
+        "=== SECTION 3: QUIZ ===\n"
+        "Create 5 multiple choice questions. Use this exact format:\n"
+        "Question: <question text>\n"
+        "A) <option>\n"
+        "B) <option>\n"
+        "C) <option>\n"
+        "D) <option>\n"
+        "Correct: <letter only, e.g. A>\n\n"
+        f"Transcript:\n{transcript[:15000]}"
+    )
+    response = model.generate_content(prompt).text
 
-    Transcript:
-    {transcript[:15000]}
-    """
-    return model.generate_content(prompt).text
+    notes, flashcards, quiz = "", "", ""
 
+    if "=== SECTION 1: SMART NOTES ===" in response and "=== SECTION 2: FLASHCARDS ===" in response:
+        notes = response.split("=== SECTION 1: SMART NOTES ===")[
+            1].split("=== SECTION 2: FLASHCARDS ===")[0].strip()
 
-@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
-def generate_flashcards(transcript):
-    prompt = f"""
-    Create 10-15 flashcards from this lecture.
+    if "=== SECTION 2: FLASHCARDS ===" in response and "=== SECTION 3: QUIZ ===" in response:
+        flashcards = response.split("=== SECTION 2: FLASHCARDS ===")[
+            1].split("=== SECTION 3: QUIZ ===")[0].strip()
 
-    Strict format:
-    Q: Question here
-    A: Answer here
+    if "=== SECTION 3: QUIZ ===" in response:
+        quiz = response.split("=== SECTION 3: QUIZ ===")[1].strip()
 
-    Make questions test understanding, not just recall.
-
-    Transcript:
-    {transcript[:15000]}
-    """
-    return model.generate_content(prompt).text
-
-
-@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
-def generate_quiz(transcript):
-    prompt = f"""
-    Create 5 multiple choice quiz questions from this lecture.
-
-    STRICT FORMAT — follow exactly:
-
-    Question: <question text>
-    A) <option>
-    B) <option>
-    C) <option>
-    D) <option>
-    Correct: <letter only, e.g. A>
-
-    Transcript:
-    {transcript[:12000]}
-    """
-    return model.generate_content(prompt).text
+    return notes, flashcards, quiz
 
 # =====================================
 # PDF EXPORT
@@ -507,17 +497,12 @@ if generate_clicked:
         with st.spinner("🧠 Processing Lecture..."):
             try:
                 if force_refresh:
-                    # Bust the cache for these specific functions so the
-                    # next calls below actually hit the APIs again.
+                    # Bust the cache so the next calls hit the APIs again.
                     get_transcript.clear()
-                    generate_notes.clear()
-                    generate_flashcards.clear()
-                    generate_quiz.clear()
+                    generate_all_content.clear()
 
                 transcript = get_transcript(video_url)
-                notes = generate_notes(transcript)
-                flashcards = generate_flashcards(transcript)
-                quiz = generate_quiz(transcript)
+                notes, flashcards, quiz = generate_all_content(transcript)
 
                 st.session_state.notes = notes
                 st.session_state.flashcards = flashcards
