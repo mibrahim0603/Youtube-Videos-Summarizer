@@ -320,19 +320,20 @@ video_url = st.text_input(
 # SESSION STATE
 # =====================================
 
-default_session_values = {
-    "notes": "",
-    "flashcards": "",
-    "quiz": "",
-    "transcript": "",
-    "formatted_quiz": "",
-    "chat_history": [],
-    "quiz_results": {},   # {question_index: True/False} -> tracks score across reruns
-}
-
-for key, default in default_session_values.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
+if "notes" not in st.session_state:
+    st.session_state.notes = ""
+if "flashcards" not in st.session_state:
+    st.session_state.flashcards = ""
+if "quiz" not in st.session_state:
+    st.session_state.quiz = ""
+if "transcript" not in st.session_state:
+    st.session_state.transcript = ""
+if "formatted_quiz" not in st.session_state:
+    st.session_state.formatted_quiz = ""
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "quiz_results" not in st.session_state:
+    st.session_state.quiz_results = {}
 
 # =====================================
 # VIDEO ID EXTRACTOR
@@ -772,6 +773,11 @@ if st.session_state.notes:
                 {"question": question, "options": options, "correct": correct})
 
         total_questions = len(parsed_questions)
+
+        # Guard: ensure quiz_results always exists before accessing it
+        if "quiz_results" not in st.session_state:
+            st.session_state.quiz_results = {}
+
         answered_count = len(st.session_state.quiz_results)
         correct_count = sum(
             1 for is_correct in st.session_state.quiz_results.values() if is_correct)
